@@ -28,12 +28,12 @@ export function AppText({ variant = "body", color, bold, style, children, ...res
 }
 
 const VVARIANTS = StyleSheet.create({
-  hero: { fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -0.5 },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: "700", letterSpacing: -0.3 },
-  subtitle: { fontSize: 17, lineHeight: 24, fontWeight: "600" },
-  body: { fontSize: 15, lineHeight: 22 },
-  caption: { fontSize: 12, lineHeight: 17 },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: "600", letterSpacing: 0.2 },
+  hero: { fontSize: 34, lineHeight: 40, fontWeight: "800", letterSpacing: -0.5 },
+  title: { fontSize: 25, lineHeight: 32, fontWeight: "700", letterSpacing: -0.3 },
+  subtitle: { fontSize: 19, lineHeight: 26, fontWeight: "600" },
+  body: { fontSize: 17, lineHeight: 24 },
+  caption: { fontSize: 14, lineHeight: 19 },
+  label: { fontSize: 15, lineHeight: 20, fontWeight: "600", letterSpacing: 0.2 },
 });
 
 const styles = StyleSheet.create({

@@ -108,7 +108,7 @@ export function HomeScreen({ navigation }: Props) {
             {actions.map((a) => (
               <AppCard key={a.label} onPress={a.onPress} style={styles.actionCard}>
                 <View style={[styles.actionIcon, { backgroundColor: palette.brandSoft }]}>
-                  <Ionicons name={a.icon} size={22} color={palette.brandDark} />
+                  <Ionicons name={a.icon} size={28} color={palette.brandDark} />
                 </View>
                 <AppText variant="subtitle" bold numberOfLines={2} style={{ marginTop: 10 }}>
                   {a.label}
@@ -124,7 +124,7 @@ export function HomeScreen({ navigation }: Props) {
           <AppCard padded accent>
             <Row>
               <View style={[styles.wellnessIcon, { backgroundColor: palette.brandSoft }]}>
-                <Ionicons name="leaf" size={22} color={palette.brandDark} />
+                <Ionicons name="leaf" size={26} color={palette.brandDark} />
               </View>
               <View style={{ flex: 1 }}>
                 <AppText variant="subtitle" bold>
@@ -196,7 +196,7 @@ export function HomeScreen({ navigation }: Props) {
           >
             <Row>
               <View style={styles.sos}>
-                <Ionicons name="heart" size={24} color={palette.danger} />
+                <Ionicons name="heart" size={28} color={palette.danger} />
               </View>
               <View style={{ flex: 1 }}>
                 <AppText variant="subtitle" bold style={{ color: palette.danger }}>
@@ -228,10 +228,10 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  actionCard: { width: "47.5%", minHeight: 120 },
-  actionIcon: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  wellnessIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  inlineRow: { flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" },
-  sos: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(225,29,72,0.12)", alignItems: "center", justifyContent: "center" },
+  grid: { flexDirection: "column", gap: 20 },
+  actionCard: { width: "100%", minHeight: 150 },
+  actionIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  wellnessIcon: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  inlineRow: { flexDirection: "column", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  sos: { width: 52, height: 52, borderRadius: 26, backgroundColor: "rgba(225,29,72,0.12)", alignItems: "center", justifyContent: "center" },
 });
