@@ -42,3 +42,6 @@ mindease_dev.db
 
 # Android local config (machine-specific)
 android/local.properties
+keystore.properties
+*.keystore
+storepass.txt

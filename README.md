@@ -27,12 +27,13 @@ MindEase AI is an intelligent emotional-wellness companion built as a final-year
 | Layer | Tech |
 |-------|------|
 | Frontend | Next.js (App Router), React, TypeScript, Tailwind CSS, Framer Motion, Recharts |
+| Mobile (native) | React Native (Expo SDK 57), TypeScript, React Navigation, Hermes + New Architecture |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy (async), python-jose, Passlib |
 | Database | PostgreSQL (SQLAlchemy ORM) |
 | AI/NLP | Configurable provider: **Mock** (default demo), **OpenAI**, **HuggingFace** |
 | Caching | Redis (optional, for caching/rate-limiting) |
-| DevOps | Docker, Docker Compose |
-| Testing | Pytest (backend), ESLint/TypeScript (frontend) |
+| DevOps | Docker, Docker Compose, Render.com |
+| Testing | Pytest (backend), ESLint/TypeScript (frontend), `tsc --noEmit` (mobile) |
 
 ---
 
@@ -51,6 +52,12 @@ mindEase-ai/
 │   └── seed_data.py         # Demo/seed data script
 ├── frontend/                # Next.js application
 │   └── src/app/             # App Router pages
+├── mobile/                  # Native Android app (React Native / Expo)
+│   ├── app.json             # App identity, icons, splash, permissions
+│   ├── src/screens/         # All 30 screens
+│   ├── src/lib/             # API client, services, storage
+│   ├── src/context/         # Auth + Theme providers
+│   └── scripts/             # Asset generation script
 ├── database/                # Migrations & schema notes
 ├── docker/                  # Dockerfiles + docker-compose.yml
 └── docs/                    # Architecture & design docs
@@ -114,6 +121,24 @@ npm run dev
 ```
 
 Open http://localhost:3000.
+
+#### 3. Native Android app (mobile)
+
+See [`docs/ANDROID_BUILD.md`](docs/ANDROID_BUILD.md) for the full build guide.
+
+```powershell
+cd mobile
+npm install
+npx tsc --noEmit
+npx expo prebuild -p android   # creates mobile/android/
+
+# Production APK (env var MUST be unset)
+cd android
+.\gradlew.bat assembleRelease --no-daemon   # -> app/build/outputs/apk/release/app-release.apk
+```
+
+The app reads its API base URL from `EXPO_PUBLIC_API_URL` at bundle time
+(`mobile/src/config.ts`); when unset it falls back to `https://mindease-backend.onrender.com`.
 
 ### Demo Accounts
 
@@ -209,6 +234,22 @@ See `docs/`:
 - `crisis-detection.md` — multi-layer crisis safety system
 - `medicine-safety.md` — medicine information rules & safety logic
 - `security.md` — authentication, authorization, and security model
+- `ANDROID_BUILD.md` — building/signing the native Android app (Windows notes included)
+- `DEPLOYMENT.md` — deploying the backend to Render.com
+
+---
+
+## 📱 Native Mobile App
+
+The `mobile/` folder contains a genuine native Android app (React Native + Expo, **no WebView**)
+that mirrors the web feature set: auth, AI chat, mood tracking & trends, journal with prompts,
+wellness exercises (breathing orb, grounding 5-4-3-2-1, CBT wizard), medicine info center,
+professional help & counselor requests, crisis mode + emergency call resources, trust contacts,
+and full profile/theme/notification settings.
+
+Ship-ready artifacts are built locally and verified:
+- Production APK & AAB signed with the release keystore; production APK is scanned for dev-IP leaks.
+- Dev APK variant targets the LAN backend for same-Wi-Fi testing.
 
 ---
 

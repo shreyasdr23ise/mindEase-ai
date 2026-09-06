@@ -1,0 +1,48 @@
+# Render Blueprint for the MindEase AI backend.
+# This file lets you deploy (or re-create) the FastAPI service + Postgres database
+# with a single push or through the Render Dashboard (New + -> Blueprint).
+#
+# Before pushing to deploy, set the following variables in the Render dashboard
+# for the web service (they are marked below as "set manually"):
+#   - Nothing required if you use the generated secrets; ONLY check
+#     JWT_SECRET and ENCRYPTION_KEY get generated automatically by Render.
+
+services:
+  - type: web
+    name: mindease-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m seed_data && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mindease-db
+          property: connectionString
+      - key: SYNC_DATABASE_URL
+        fromDatabase:
+          name: mindease-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: 48
+      - key: ENCRYPTION_KEY
+        generateValue: 48
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: AI_PROVIDER
+        value: mock
+      - key: CORS_ORIGINS
+        value: https://mindease-frontend.onrender.com,http://localhost:3000
+      - key: CREATE_TABLES_ON_STARTUP
+        value: "true"
+
+databases:
+  - name: mindease-db
+    databaseName: mindease_ai
+    user: mindease
+    plan: free

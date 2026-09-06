@@ -29,4 +29,19 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
+def _normalize_postgres_url(url: str) -> str:
+    """Render provides DATABASE_URL as postgres://... which the async engine
+    cannot use directly; remap it to the asyncpg driver scheme."""
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):]
+    return url
+
+
 settings = Settings()
+if not settings.DATABASE_URL.startswith("sqlite"):
+    settings.DATABASE_URL = _normalize_postgres_url(settings.DATABASE_URL)
+if not settings.SYNC_DATABASE_URL.startswith("sqlite"):
+    if settings.SYNC_DATABASE_URL.startswith("postgresql+asyncpg://"):
+        settings.SYNC_DATABASE_URL = "postgres://" + settings.SYNC_DATABASE_URL[len("postgresql+asyncpg://"):]
+    elif settings.SYNC_DATABASE_URL.startswith("postgres://"):
+        settings.SYNC_DATABASE_URL = "postgres://" + settings.SYNC_DATABASE_URL[len("postgres://"):]

@@ -6,8 +6,10 @@ const config: CapacitorConfig = {
   webDir: "out",
   server: {
     androidScheme: "https",
-    // Coming soon: the hosted app URL. Replaced once the app is deployed online.
-    url: "https://mindease-ai.example.app",
+    // Wi-Fi build: phone talks to the laptop over the local network.
+    // If the laptop's IP changes, rebuild with the new address.
+    url: "http://10.114.11.118:3000",
+    cleartext: true,
   },
 };
 
