@@ -2,7 +2,7 @@ from uuid import uuid4
 from typing import Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ from app.services.safety.filter import ResponseSafetyFilter
 from app.services.medicine.service import MedicineService
 from app.models.crisis import CrisisEvent
 from app.models.audit import AuditLog
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 @router.post("/message", response_model=ChatResponse)
 async def send_message(
     payload: ChatMessage,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -99,6 +101,13 @@ async def send_message(
             intent_detected={"intent": "crisis", "confidence": 0.98},
         )
         db.add(assistant_msg)
+        db.add(build_activity_log(
+            user_id=current_user.id,
+            event_type=EventType.CRISIS_DETECTED,
+            event_category=EventCategory.CRISIS,
+            metadata={"severity": crisis["severity"], "crisis_type": crisis["crisis_type"]},
+            request=request,
+        ))
         await db.commit()
 
         return ChatResponse(
@@ -211,6 +220,27 @@ async def send_message(
         details={"intent": intent_result.get("intent"), "emotion": emotion_result.get("emotion")},
     )
     db.add(audit)
+
+    # Log activity events (no message content is ever stored)
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.CHAT_STARTED if not payload.conversation_id else EventType.CHAT_MESSAGE,
+        event_category=EventCategory.CHAT,
+        metadata={
+            "intent": intent_result.get("intent"),
+            "emotion": emotion_result.get("emotion"),
+            "character_count": len(message_text),
+        },
+        request=request,
+    ))
+    if intent_result.get("intent") == "medicine_info":
+        db.add(build_activity_log(
+            user_id=current_user.id,
+            event_type=EventType.MEDICINE_INFO_REQUEST,
+            event_category=EventCategory.MEDICINE,
+            metadata={"queried": True},
+            request=request,
+        ))
 
     await db.commit()
 

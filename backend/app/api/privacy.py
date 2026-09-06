@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.models.conversation import Conversation, Message
 from app.models.mood import MoodLog
 from app.models.journal import JournalEntry
 from app.schemas.user import UserResponse
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/privacy", tags=["privacy"])
 
@@ -46,11 +47,13 @@ async def get_privacy_settings(
 @router.put("/settings", response_model=dict)
 async def update_privacy_settings(
     payload: dict,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     settings = await _get_or_create_settings(db, current_user.id)
 
+    changed_keys = []
     if "share_mood_data" in payload:
         settings.share_mood_data = bool(payload["share_mood_data"])
     if "share_journal" in payload:
@@ -62,8 +65,17 @@ async def update_privacy_settings(
         if retention < 30:
             raise HTTPException(status_code=400, detail="Data retention must be at least 30 days")
         settings.data_retention_days = retention
+    changed_keys = [k for k in payload if k in {
+        "share_mood_data", "share_journal", "allow_analytics", "data_retention_days"}]
 
     settings.updated_at = datetime.utcnow()
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.PRIVACY_SETTINGS_CHANGED,
+        event_category=EventCategory.SETTINGS,
+        metadata={"changed_keys": sorted(changed_keys), "data_retention_days": settings.data_retention_days},
+        request=request,
+    ))
     await db.commit()
     await db.refresh(settings)
 
@@ -77,11 +89,19 @@ async def update_privacy_settings(
 
 @router.delete("/account", status_code=status.HTTP_200_OK)
 async def delete_account(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Soft delete - deactivate account rather than hard delete
     current_user.is_active = False
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.PROFILE_UPDATED,
+        event_category=EventCategory.PROFILE,
+        metadata={"action": "account_deactivated"},
+        request=request,
+    ))
     await db.commit()
     return {"message": "Account has been deactivated. Your data will be retained per your retention settings."}
 

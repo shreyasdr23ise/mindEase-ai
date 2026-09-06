@@ -10,6 +10,7 @@ from app.models.emergency import EmergencyResource
 from app.models.counselor import Counselor, CounselorRequest
 from app.models.crisis import CrisisEvent
 from app.models.audit import AuditLog
+from app.models.activity import ActivityLog
 from app.models.privacy import UserPrivacySettings
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "CounselorRequest",
     "CrisisEvent",
     "AuditLog",
+    "ActivityLog",
     "UserPrivacySettings",
 ]

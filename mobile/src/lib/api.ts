@@ -1,4 +1,5 @@
 import { API_URL, NETWORK_TIMEOUT_MS } from "../config";
+import { deviceHeaders } from "./device";
 
 export class ApiError extends Error {
   status: number;
@@ -52,6 +53,7 @@ export async function apiRequest<T = unknown>(path: string, opts: RequestOptions
   const headers: Record<string, string> = { Accept: "application/json" };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
+  Object.assign(headers, await deviceHeaders());
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? NETWORK_TIMEOUT_MS);

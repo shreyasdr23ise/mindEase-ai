@@ -1,7 +1,7 @@
 from uuid import uuid4
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,7 @@ from app.models.wellness import WellnessExercise, WellnessSession
 from app.schemas.wellness import (
     WellnessExerciseResponse, WellnessSessionCreate, WellnessSessionResponse,
 )
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/wellness", tags=["wellness"])
 
@@ -39,6 +40,7 @@ async def list_exercises(
 @router.post("/session", response_model=WellnessSessionResponse, status_code=status.HTTP_201_CREATED)
 async def log_wellness_session(
     payload: WellnessSessionCreate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -58,6 +60,19 @@ async def log_wellness_session(
         notes=payload.notes,
     )
     db.add(session)
+
+    event_type = EventType.WELLNESS_COMPLETED if payload.completed else EventType.WELLNESS_STARTED
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=event_type,
+        event_category=EventCategory.WELLNESS,
+        metadata={
+            "exercise": exercise.category,
+            "completed": bool(payload.completed),
+            "duration_seconds": payload.duration_seconds,
+        },
+        request=request,
+    ))
     await db.commit()
     await db.refresh(session)
 

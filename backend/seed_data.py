@@ -23,6 +23,7 @@ from app.models.emergency import EmergencyResource
 from app.models.counselor import Counselor
 from app.models.privacy import UserPrivacySettings
 from app.models.audit import AuditLog
+from app.models.activity import ActivityLog
 from app.core.security import get_password_hash
 
 
@@ -39,16 +40,47 @@ def main():
 
     # ---------- Clean existing demo data ----------
     demo_email = "demo@mindease.ai"
-    admin_email = "admin@mindease.ai"
+    admin_email = settings.ADMIN_EMAIL or "admin@mindease.ai"
     counselor_email = "counselor@mindease.ai"
 
     existing_demo = db.query(User).filter(User.email == demo_email).first()
     existing_admin = db.query(User).filter(User.email == admin_email).first()
     existing_counselor = db.query(User).filter(User.email == counselor_email).first()
 
-    # ---------- Admin user ----------
-    if existing_admin:
-        print("Admin already exists, skipping. Remove and re-run to reset.")
+    admin_password = settings.ADMIN_PASSWORD or settings.DEMO_ADMIN_PASSWORD
+
+    def _create_admin_user():
+        admin_user = User(
+            id=uuid.uuid4(),
+            email=admin_email,
+            username="mindease_admin",
+            full_name="MindEase Administrator",
+            hashed_password=get_password_hash(admin_password),
+            role="admin",
+            is_active=True,
+            is_anonymous=False,
+            onboarding_completed=True,
+        )
+        db.add(admin_user)
+        db.flush()
+        db.add(UserPrivacySettings(user_id=admin_user.id))
+        return admin_user
+
+    if existing_demo and existing_admin:
+        # Everything already seeded - just refresh the admin password from env.
+        existing_admin.hashed_password = get_password_hash(admin_password)
+        existing_admin.role = "admin"
+        db.commit()
+        print(f"Seed already applied. Admin password refreshed from env for {admin_email}.")
+        db.close()
+        return
+
+    if existing_demo and not existing_admin:
+        # Prod migration: demo content exists, but the configured admin does not.
+        # Create the admin only; do not duplicate demo content.
+        _create_admin_user()
+        db.commit()
+        print(f"Added admin user {admin_email}. Existing demo data preserved.")
         db.close()
         return
 
@@ -614,18 +646,7 @@ def main():
 
     # ---------- Create users ----------
     print("Creating users...")
-    admin_user = User(
-        id=uuid.uuid4(),
-        email=admin_email,
-        username="mindease_admin",
-        full_name="MindEase Administrator",
-        hashed_password=get_password_hash(settings.DEMO_ADMIN_PASSWORD),
-        role="admin",
-        is_active=True,
-        is_anonymous=False,
-        onboarding_completed=True,
-    )
-    db.add(admin_user)
+    admin_user = _create_admin_user()
 
     demo_user = User(
         id=uuid.uuid4(),
@@ -659,7 +680,6 @@ def main():
     db.flush()
 
     # Privacy settings for demo and admin
-    db.add(UserPrivacySettings(user_id=admin_user.id))
     db.add(UserPrivacySettings(user_id=demo_user.id))
     db.add(UserPrivacySettings(user_id=counselor_user.id))
 
@@ -931,9 +951,88 @@ def main():
         ))
     db.flush()
 
+    # ---------- Demo activity timeline ----------
+    print("Seeding demo activity timeline...")
+    demo_devices = [
+        {
+            "device_type": "mobile",
+            "device_manufacturer": "Samsung",
+            "device_model": "Galaxy S24",
+            "os": "android",
+            "os_version": "14",
+            "app_version": "1.0.0",
+            "network_type": "wifi",
+        },
+        {
+            "device_type": "mobile",
+            "device_manufacturer": "Google",
+            "device_model": "Pixel 8",
+            "os": "android",
+            "os_version": "15",
+            "app_version": "1.0.0",
+            "network_type": "cellular",
+        },
+        {
+            "device_type": "mobile",
+            "device_manufacturer": "Apple",
+            "device_model": "iPhone 15",
+            "os": "ios",
+            "os_version": "17",
+            "app_version": "1.0.0",
+            "network_type": "wifi",
+        },
+    ]
+    timeline = [
+        # (hour_minute_offset, event_type, event_category, status, metadata, device_idx)
+        (-96, "REGISTER", "auth", "success", {"email": "demo@mindease.ai"}, 0),
+        (-96, "ONBOARDING_COMPLETED", "onboarding", "success", {"goals": True}, 0),
+        (-48, "LOGIN", "auth", "success", {"email": "demo@mindease.ai", "role": "user"}, 0),
+        (-48, "HOME_OPENED", "navigation", "success", {"screen": "home"}, 0),
+        (-47, "MOOD_CHECKIN", "mood", "success", {"mood": "neutral", "stress_level": 6, "anxiety_level": 5}, 0),
+        (-46, "CHAT_STARTED", "chat", "success", {"title": "Dealing with exam stress"}, 0),
+        (-45, "CHAT_MESSAGE", "chat", "success", {"intent": "general", "emotion": "stress", "character_count": 84}, 0),
+        (-44, "CHAT_MESSAGE", "chat", "success", {"intent": "general", "emotion": "stress", "character_count": 61}, 0),
+        (-30, "WELLNESS_STARTED", "wellness", "success", {"exercise": "breathing", "completed": False}, 1),
+        (-30, "WELLNESS_COMPLETED", "wellness", "success", {"exercise": "breathing", "completed": True, "duration_seconds": 292}, 1),
+        (-24, "MEDICINE_INFO_REQUEST", "medicine", "success", {"queried": True}, 1),
+        (-18, "JOURNAL_CREATED", "journal", "success", {"word_count": 47}, 1),
+        (-12, "PROFILE_VIEWED", "profile", "success", {"screen": "profile"}, 2),
+        (-4, "LOGIN", "auth", "success", {"email": "demo@mindease.ai", "role": "user"}, 2),
+        (-3, "MOOD_CHECKIN", "mood", "success", {"mood": "good", "stress_level": 3, "anxiety_level": 4}, 2),
+        (-1, "CHAT_STARTED", "chat", "success", {"title": "Gratitude check-in"}, 2),
+        (-1, "CHAT_MESSAGE", "chat", "success", {"intent": "general", "emotion": "positive", "character_count": 76}, 2),
+        (-1, "LOGOUT", "auth", "success", {"email": "demo@mindease.ai"}, 2),
+        (-96, "LOGIN_FAILED", "auth", "failed", {"email": "demo@mindease.ai"}, 0),
+    ]
+    for ts_offset, event_type, event_category, status_flag, metadata, dev_idx in timeline:
+        device = demo_devices[dev_idx % len(demo_devices)]
+        event_time = datetime.utcnow() + timedelta(hours=ts_offset)
+        db.add(ActivityLog(
+            id=uuid.uuid4(),
+            user_id=demo_user.id,
+            event_type=event_type,
+            event_category=event_category,
+            timestamp=event_time,
+            status=status_flag,
+            device_type=device["device_type"],
+            device_manufacturer=device["device_manufacturer"],
+            device_model=device["device_model"],
+            os=device["os"],
+            os_version=device["os_version"],
+            app_version=device["app_version"],
+            network_type=device["network_type"],
+            ip_address="203.0.113.7",
+            request_id=str(uuid.uuid4()),
+            session_id=str(uuid.uuid4()),
+            metadata=metadata,
+            created_at=event_time,
+        ))
+    db.flush()
+    print(f"  Added {len(timeline)} activity events.")
+
     db.commit()
     print("\n=== SEED COMPLETE ===")
-    print(f"  Admin user:     {admin_email} / admin123")
+    print(f"  Admin user:     {admin_email} / (password set via env, not printed)")
     print(f"  Demo user:      {demo_email} / demo123")
     print(f"  Counselor user: {counselor_email} / counselor123")
     print(f"  Exercises:      {len(exercises_data)}")
@@ -943,6 +1042,7 @@ def main():
     print(f"  Journal entries:{len(journal_data)}")
     print(f"  Conversations:  {len(conversation_data)}")
     print(f"  Counselors:     2")
+    print(f"  Activity events:{len(timeline)}")
 
     db.close()
 

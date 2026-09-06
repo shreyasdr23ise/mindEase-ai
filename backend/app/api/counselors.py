@@ -1,6 +1,6 @@
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.models.counselor import Counselor, CounselorRequest
 from app.schemas.counselor import (
     CounselorResponse, CounselorRequestCreate, CounselorRequestResponse,
 )
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/counselors", tags=["counselors"])
 
@@ -34,6 +35,7 @@ def _to_response(c: Counselor, user: User) -> CounselorResponse:
 
 @router.get("/", response_model=list[CounselorResponse])
 async def list_counselors(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -41,6 +43,14 @@ async def list_counselors(
         select(Counselor).where(Counselor.is_active == True)
     )
     counselors = list(result.scalars().all())
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.COUNSELOR_VIEWED,
+        event_category=EventCategory.COUNSELOR,
+        metadata={"counselor_count": len(counselors)},
+        request=request,
+    ))
+    await db.commit()
 
     responses = []
     for c in counselors:
@@ -88,6 +98,7 @@ async def get_my_requests(
 @router.get("/{counselor_id}", response_model=CounselorResponse)
 async def get_counselor(
     counselor_id,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -98,6 +109,15 @@ async def get_counselor(
     if not counselor:
         raise HTTPException(status_code=404, detail="Counselor not found")
 
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.COUNSELOR_VIEWED,
+        event_category=EventCategory.COUNSELOR,
+        metadata={"counselor": counselor.specialty},
+        request=request,
+    ))
+    await db.commit()
+
     user_result = await db.execute(select(User).where(User.id == counselor.user_id))
     user = user_result.scalar_one_or_none()
     return _to_response(counselor, user)
@@ -106,6 +126,7 @@ async def get_counselor(
 @router.post("/request", response_model=CounselorRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_counselor_request(
     payload: CounselorRequestCreate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -134,6 +155,13 @@ async def create_counselor_request(
         message=payload.message,
     )
     db.add(request)
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.COUNSELOR_REQUESTED,
+        event_category=EventCategory.COUNSELOR,
+        metadata={"counselor": counselor.specialty, "message_length": len(payload.message or "")},
+        request=request,
+    ))
     await db.commit()
     await db.refresh(request)
 

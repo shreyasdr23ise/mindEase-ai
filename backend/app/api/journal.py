@@ -1,7 +1,7 @@
 from uuid import uuid4
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,7 @@ from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.journal import JournalEntry
 from app.schemas.journal import JournalCreate, JournalUpdate, JournalResponse
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/journal", tags=["journal"])
 
@@ -23,6 +24,7 @@ def count_words(content: str) -> int:
 @router.post("/", response_model=JournalResponse, status_code=status.HTTP_201_CREATED)
 async def create_journal_entry(
     payload: JournalCreate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -46,6 +48,13 @@ async def create_journal_entry(
         writing_prompt=payload.writing_prompt,
     )
     db.add(entry)
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.JOURNAL_CREATED,
+        event_category=EventCategory.JOURNAL,
+        metadata={"word_count": count_words(payload.content)},
+        request=request,
+    ))
     await db.commit()
     await db.refresh(entry)
     return entry
@@ -93,6 +102,7 @@ async def get_journal_entry(
 async def update_journal_entry(
     entry_id,
     payload: JournalUpdate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -115,6 +125,13 @@ async def update_journal_entry(
 
     from datetime import datetime
     entry.updated_at = datetime.utcnow()
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.JOURNAL_UPDATED,
+        event_category=EventCategory.JOURNAL,
+        metadata={"word_count": entry.word_count},
+        request=request,
+    ))
     await db.commit()
     await db.refresh(entry)
     return entry
@@ -123,6 +140,7 @@ async def update_journal_entry(
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_journal_entry(
     entry_id,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -133,4 +151,11 @@ async def delete_journal_entry(
     if not entry:
         raise HTTPException(status_code=404, detail="Journal entry not found")
     await db.delete(entry)
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.JOURNAL_DELETED,
+        event_category=EventCategory.JOURNAL,
+        metadata={"word_count": entry.word_count},
+        request=request,
+    ))
     await db.commit()

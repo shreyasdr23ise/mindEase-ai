@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     DEMO_USER_PASSWORD: str = "demo123"
     DEMO_COUNSELOR_PASSWORD: str = "counselor123"
     DEMO_ADMIN_PASSWORD: str = "admin123"
+    ADMIN_EMAIL: str = "shreyasde157@gmail.com"
+    ADMIN_PASSWORD: Optional[str] = None
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

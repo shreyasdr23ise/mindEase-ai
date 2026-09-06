@@ -2,7 +2,7 @@ from uuid import uuid4
 from datetime import datetime, date, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.core.security import get_current_active_user
 from app.models.user import User
 from app.models.mood import MoodLog
 from app.schemas.mood import MoodCreate, MoodUpdate, MoodResponse, MoodHistory
+from app.services.activity.logger import build_activity_log, EventType, EventCategory
 
 router = APIRouter(prefix="/api/mood", tags=["mood"])
 
@@ -20,6 +21,7 @@ VALID_MOODS = {"very_good", "good", "neutral", "low", "very_low"}
 @router.post("/", response_model=MoodResponse, status_code=status.HTTP_201_CREATED)
 async def create_mood_log(
     payload: MoodCreate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -39,6 +41,13 @@ async def create_mood_log(
         note=payload.note,
     )
     db.add(log)
+    db.add(build_activity_log(
+        user_id=current_user.id,
+        event_type=EventType.MOOD_CHECKIN,
+        event_category=EventCategory.MOOD,
+        metadata={"mood": payload.mood, "stress_level": payload.stress_level, "anxiety_level": payload.anxiety_level},
+        request=request,
+    ))
     await db.commit()
     await db.refresh(log)
     return log
@@ -59,6 +68,7 @@ async def get_mood_logs(
 
 @router.get("/history", response_model=MoodHistory)
 async def get_mood_history(
+    request: Request,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     current_user: User = Depends(get_current_active_user),
@@ -85,6 +95,16 @@ async def get_mood_history(
     distribution = {}
     for l in logs:
         distribution[l.mood] = distribution.get(l.mood, 0) + 1
+
+    if request:
+        db.add(build_activity_log(
+            user_id=current_user.id,
+            event_type=EventType.MOOD_HISTORY_VIEW,
+            event_category=EventCategory.MOOD,
+            metadata={"log_count": len(logs)},
+            request=request,
+        ))
+        await db.commit()
 
     return MoodHistory(
         logs=logs,

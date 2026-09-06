@@ -39,9 +39,16 @@ services:
       - key: AI_PROVIDER
         value: mock
       - key: CORS_ORIGINS
-        value: https://mindease-frontend.onrender.com,http://localhost:3000
+        value: https://mindease-frontend.onrender.com,http://localhost:3000,http://localhost:8081
       - key: CREATE_TABLES_ON_STARTUP
         value: "true"
+      # Admin dashboard account. Password is set once in the Render dashboard
+      # (never committed). If ADMIN_PASSWORD is unset, seeding falls back to the
+      # demo password — so set it before first deploy.
+      - key: ADMIN_EMAIL
+        value: shreyasde157@gmail.com
+      - key: ADMIN_PASSWORD
+        sync: false
 
 databases:
   - name: mindease-db
