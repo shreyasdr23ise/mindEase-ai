@@ -44,4 +44,4 @@ mindease_dev.db
 android/local.properties
 keystore.properties
 *.keystore
-storepass.txt
+storepass.txtadb/

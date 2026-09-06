@@ -27,9 +27,9 @@ services:
           name: mindease-db
           property: connectionString
       - key: JWT_SECRET
-        generateValue: 48
+        generateValue: true
       - key: ENCRYPTION_KEY
-        generateValue: 48
+        generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
