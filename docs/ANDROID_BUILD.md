@@ -7,9 +7,9 @@ Delivery artifacts (signed with the release keystore):
 
 | Artifact | Purpose | Backend |
 |----------|---------|---------|
-| `mindease-ai-release.apk` | Installable production APK | `https://mindease-backend.onrender.com` |
+| `mindease-ai-release.apk` | Installable production APK | `https://mindease-backend-r87i.onrender.com` |
 | `mindease-ai-dev-LAN.apk` | Installable dev APK (same Wi-Fi) | `http://10.114.11.118:8000` (LAN) |
-| `mindease-ai-release.aab` | Google Play Store bundle | `https://mindease-backend.onrender.com` |
+| `mindease-ai-release.aab` | Google Play Store bundle | `https://mindease-backend-r87i.onrender.com` |
 
 > The production APK contains **no** `localhost`, `127.0.0.1`, or LAN IP. The bundled JS is scanned
 > as part of the release checklist.
@@ -60,10 +60,11 @@ npx expo prebuild -p android
 # 2) Type-check
 npx tsc --noEmit
 
-# 3) Build the PRODUCTION APK (no EXPO_PUBLIC_API_URL set!)
+# 3) Build the PRODUCTION APK (EXPO_PUBLIC_API_URL points at the Render backend)
 $env:JAVA_HOME = "D:\Java\jdk-21.0.12.1+1"
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
-Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue   # MUST be absent for prod
+$env:EXPO_PUBLIC_API_URL = "https://mindease-backend-r87i.onrender.com"
+Remove-Item -Recurse -Force app\build\generated\assets\react\release   # clear the old JS bundle first
 cd android
 .\gradlew.bat assembleRelease --no-daemon
 
@@ -117,9 +118,9 @@ $env:JAVA_HOME = "D:\Java\jdk-21.0.12.1+1"
 ## 6. Release checklist (verify before shipping)
 
 1. `apksigner verify --print-certs` shows the MindEase release cert.
-2. Embedded JS bundle contains the production backend URL only.
+2. Embedded JS bundle contains the production backend URL only (`https://mindease-backend-r87i.onrender.com`).
 3. Scan the whole APK for dev URLs: must NOT contain `10.114.11.118`.
-4. Backend smoke-test: `GET https://mindease-backend.onrender.com/health` returns `{"status":"healthy"}`.
+4. Backend smoke-test: `GET https://mindease-backend-r87i.onrender.com/health` returns `{"status":"healthy"}`.
 5. Install APK on a device over USB/Wi-Fi and complete login + one mood log + one chat message.
 6. Ensure notification permission is granted if daily reminder is enabled.
 

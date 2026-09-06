@@ -12,7 +12,7 @@ import { Platform } from "react-native";
 
 const fromEnv = (process.env.EXPO_PUBLIC_API_URL || "").trim();
 
-export const PRODUCTION_API_URL = "https://mindease-backend.onrender.com";
+export const PRODUCTION_API_URL = "https://mindease-backend-r87i.onrender.com";
 export const API_URL = fromEnv || PRODUCTION_API_URL;
 
 export const APP_NAME = "MindEase AI";
