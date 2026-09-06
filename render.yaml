@@ -39,7 +39,7 @@ services:
       - key: AI_PROVIDER
         value: mock
       - key: CORS_ORIGINS
-        value: https://mindease-frontend.onrender.com,http://localhost:3000,http://localhost:8081
+        value: https://mindease-frontend.onrender.com,http://localhost:3000,http://localhost:8081,https://mindease-admin.onrender.com
       - key: CREATE_TABLES_ON_STARTUP
         value: "true"
       # Admin dashboard account. Password is set once in the Render dashboard
