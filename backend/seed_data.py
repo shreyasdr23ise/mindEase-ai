@@ -47,6 +47,10 @@ def main():
     existing_admin = db.query(User).filter(User.email == admin_email).first()
     existing_counselor = db.query(User).filter(User.email == counselor_email).first()
 
+    # Also find any existing admin-role user (handles the case where the admin
+    # email was changed between deploys but a prior admin row still exists).
+    any_admin = db.query(User).filter(User.role == "admin").first()
+
     admin_password = settings.ADMIN_PASSWORD or settings.DEMO_ADMIN_PASSWORD
 
     def _create_admin_user():
@@ -75,8 +79,21 @@ def main():
         db.close()
         return
 
-    if existing_demo and not existing_admin:
-        # Prod migration: demo content exists, but the configured admin does not.
+    if existing_demo and any_admin:
+        # The configured admin email doesn't exist, but there IS a prior admin
+        # row (likely with the old default email). Update it in-place rather
+        # than inserting a new row that would conflict on the unique username.
+        any_admin.email = admin_email
+        any_admin.hashed_password = get_password_hash(admin_password)
+        any_admin.role = "admin"
+        any_admin.is_active = True
+        db.commit()
+        print(f"Updated existing admin to {admin_email}. Existing demo data preserved.")
+        db.close()
+        return
+
+    if existing_demo and not existing_admin and not any_admin:
+        # Prod migration: demo content exists, but no admin user at all.
         # Create the admin only; do not duplicate demo content.
         _create_admin_user()
         db.commit()
