@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Annotated[List[str], NoDecode] = ["http://localhost:3000"]
     ENCRYPTION_KEY: str = "mindease-ai-encryption-key-change-in-production"
     CREATE_TABLES_ON_STARTUP: bool = True
+    DEMO_USER_PASSWORD: str = "demo123"
+    DEMO_COUNSELOR_PASSWORD: str = "counselor123"
+    DEMO_ADMIN_PASSWORD: str = "admin123"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -30,10 +33,11 @@ class Settings(BaseSettings):
 
 
 def _normalize_postgres_url(url: str) -> str:
-    """Render provides DATABASE_URL as postgres://... which the async engine
-    cannot use directly; remap it to the asyncpg driver scheme."""
-    if url.startswith("postgres://"):
-        return "postgresql+asyncpg://" + url[len("postgres://"):]
+    """Render provides DATABASE_URL as postgres://... or postgresql://... which the async
+    engine cannot use directly; remap it to the asyncpg driver scheme."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+asyncpg://" + url.split("://", 1)[1]
     return url
 
 

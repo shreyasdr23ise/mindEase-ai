@@ -41,7 +41,21 @@ npm-debug.log*
 mindease_dev.db
 
 # Android local config (machine-specific)
+local.properties
 android/local.properties
 keystore.properties
+storepass.txt
+adb/
+
+# Credentials, secrets & private keys — NEVER commit
 *.keystore
-storepass.txtadb/
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+*.der
+secrets/
+credentials/
+.render/
+cli.yaml
