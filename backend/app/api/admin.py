@@ -73,8 +73,9 @@ async def get_analytics(
     total_counselors = await _get_count(db, Counselor)
 
     active_today_result = await db.execute(
-        select(func.count(func.distinct(Message.user_id)))
+        select(func.count(func.distinct(Conversation.user_id)))
         .select_from(Message)
+        .join(Conversation, Message.conversation_id == Conversation.id)
         .where(Message.created_at >= today_start)
     )
     active_today = active_today_result.scalar() or 0
