@@ -42,6 +42,6 @@ if not settings.DATABASE_URL.startswith("sqlite"):
     settings.DATABASE_URL = _normalize_postgres_url(settings.DATABASE_URL)
 if not settings.SYNC_DATABASE_URL.startswith("sqlite"):
     if settings.SYNC_DATABASE_URL.startswith("postgresql+asyncpg://"):
-        settings.SYNC_DATABASE_URL = "postgres://" + settings.SYNC_DATABASE_URL[len("postgresql+asyncpg://"):]
+        settings.SYNC_DATABASE_URL = "postgresql://" + settings.SYNC_DATABASE_URL[len("postgresql+asyncpg://"):]
     elif settings.SYNC_DATABASE_URL.startswith("postgres://"):
-        settings.SYNC_DATABASE_URL = "postgres://" + settings.SYNC_DATABASE_URL[len("postgres://"):]
+        settings.SYNC_DATABASE_URL = "postgresql://" + settings.SYNC_DATABASE_URL[len("postgres://"):]
