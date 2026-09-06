@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
 export function RegisterScreen({ navigation }: Props) {
   const { palette } = useTheme();
-  const { register } = useAuth();
+  const { register, token, user } = useAuth();
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -25,6 +25,13 @@ export function RegisterScreen({ navigation }: Props) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // New accounts finish onboarding before entering the app.
+  useEffect(() => {
+    if (!token) return;
+    if (!user?.onboarding_completed) navigation.replace("Onboarding");
+    else navigation.replace("MainTabs", { screen: "HomeTab", params: { screen: "Home" } });
+  }, [token, user, navigation]);
 
   const submit = async () => {
     setError(null);

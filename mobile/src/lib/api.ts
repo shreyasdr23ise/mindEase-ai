@@ -33,6 +33,20 @@ interface RequestOptions {
   raw?: boolean;
 }
 
+export function warmUp(): void {
+  // Wakes a sleeping free-tier backend early (e.g. Render) so first user
+  // requests aren't aborted by the default timeout. Fire-and-forget.
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 120000);
+    fetch(`${API_URL}/health`, { method: "GET", signal: controller.signal })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer));
+  } catch {
+    // Warm-up is optional; ignore failures.
+  }
+}
+
 export async function apiRequest<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };

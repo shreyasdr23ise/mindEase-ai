@@ -13,6 +13,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { setNotificationHandler } from "expo-notifications";
 import { IS_ANDROID } from "./src/config";
+import { warmUp } from "./src/lib/api";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -51,6 +52,8 @@ function ThemedApp() {
 
 export default function App() {
   useEffect(() => {
+    // Wake the (free-tier, sleeping) backend as early as possible.
+    warmUp();
     // Give the native splash a beat before our React splash takes over.
     const t = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});

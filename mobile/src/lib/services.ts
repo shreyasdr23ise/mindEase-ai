@@ -25,6 +25,7 @@ export const auth = {
     apiRequest<AuthResponse>("/api/auth/login", {
       method: "POST",
       body: { email, password },
+      timeoutMs: 120000,
     }),
   register: (input: {
     email: string;
@@ -35,9 +36,10 @@ export const auth = {
     apiRequest<AuthResponse>("/api/auth/register", {
       method: "POST",
       body: input,
+      timeoutMs: 120000,
     }),
   me: (token: string) =>
-    apiRequest("/api/auth/me", { token }),
+    apiRequest("/api/auth/me", { token, timeoutMs: 60000 }),
   logout: (token: string) =>
     apiRequest<{ message: string }>("/api/auth/logout", {
       method: "POST",
