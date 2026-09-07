@@ -128,7 +128,7 @@ Mental health care access is limited by cost, stigma, availability, and the wide
 - **Start command:** `python -m seed_data && uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
 - **Health check:** `GET /health` → `200 {"status": "healthy"}` (Render's configured `healthCheckPath`).
 - **Configuration:** all secrets and connection strings are injected as **environment variables only** — never committed.
-- Deploy details and the full Render setup run are documented in `docs/DEPLOYMENT.md` and the blueprint `render.yaml`.
+- Deploy details and the full Render setup run are documented in `backend/docs/DEPLOYMENT.md` and the blueprint `render.yaml`.
 
 ---
 
@@ -178,7 +178,7 @@ Base URL: `https://mindease-backend-r87i.onrender.com` · Interactive docs: **`/
 - Contains **only the public HTTPS backend URL** (`https://mindease-backend-r87i.onrender.com`) — no `localhost`, emulator, LAN, or dev-server endpoints.
 - **No API keys, passwords, database credentials, or private keys embedded** (byte-level scan of all 1,325 APK entries).
 
-See [`docs/ANDROID_BUILD.md`](docs/ANDROID_BUILD.md) for reproducing the signed build (Windows notes included).
+See [`backend/docs/ANDROID_BUILD.md`](backend/docs/ANDROID_BUILD.md) for reproducing the signed build (Windows notes included).
 
 ---
 
@@ -200,7 +200,7 @@ python seed_data.py           # optional demo/seed data
 ### Native Android app
 
 ```bash
-cd mobile
+cd frontend
 npm install
 npx tsc --noEmit
 npx expo prebuild -p android
@@ -208,7 +208,7 @@ cd android
 .\gradlew.bat assembleRelease --no-daemon   # -> app/build/outputs/apk/release/app-release.apk
 ```
 
-The API base URL is baked in at bundle time via `EXPO_PUBLIC_API_URL` (see `mobile/src/config.ts`).
+The API base URL is baked in at bundle time via `EXPO_PUBLIC_API_URL` (see `frontend/src/config.ts`).
 
 > **Demo accounts:** seeded automatically on deploy via `DEMO_USER_PASSWORD`, `DEMO_COUNSELOR_PASSWORD`, and `DEMO_ADMIN_PASSWORD`. For **local development only**, placeholders are documented in `backend/.env.example`; production credentials are managed as secret environment variables and are **never** written to this repository or the README.
 
@@ -245,25 +245,24 @@ Coverage areas:
 
 ```
 mindEase-ai/
-├── backend/                  # FastAPI application (Python 3.12)
+├── frontend/                  # Native Android app (React Native + Expo) → builds the APK
+│   ├── android/               # Generated native project (release APK output)
+│   ├── src/screens/           # App screens
+│   ├── src/lib/               # API client, services, secure storage
+│   └── src/context/           # Auth + Theme providers
+├── backend/                   # FastAPI application (Python 3.12)
 │   ├── app/
-│   │   ├── api/              # Routers: auth, chat, mood, journal, wellness, medicine, emergency, crisis, counselors, onboarding, privacy, admin
-│   │   ├── core/             # config (env-driven, secret-safe), database, security
-│   │   ├── models/           # SQLAlchemy ORM models
-│   │   ├── schemas/          # Pydantic request/response schemas
-│   │   ├── services/         # AI providers, emotion/intent/crisis/medicine/safety services
-│   │   └── main.py           # App factory & routing
-│   ├── tests/                # Pytest suites (71 passing)
-│   └── seed_data.py          # Seed/reference data generation
-├── mobile/                   # Native Android app (React Native + Expo)
-│   ├── android/              # Generated native project (release APK output)
-│   ├── src/screens/          # App screens
-│   ├── src/lib/              # API client, services, secure storage
-│   └── src/context/          # Auth + Theme providers
-├── database/                 # Schema notes & migration material
-├── docker/                   # Dockerfiles + docker-compose.yml
-├── docs/                     # architecture, api, security, deployment, android build docs
-└── render.yaml               # Render blueprint (service + database)
+│   │   ├── api/               # Routers: auth, chat, mood, journal, wellness, medicine, emergency, crisis, counselors, onboarding, privacy, admin
+│   │   ├── core/              # config (env-driven, secret-safe), database, security
+│   │   ├── models/            # SQLAlchemy ORM models
+│   │   ├── schemas/           # Pydantic request/response schemas
+│   │   ├── services/          # AI providers, emotion/intent/crisis/medicine/safety services
+│   │   └── main.py            # App factory & routing
+│   ├── admin/                 # Admin Dashboard (Vite + React) — open this folder to run it
+│   ├── docs/                  # architecture, api, security, deployment, android build docs
+│   ├── tests/                 # Pytest suites
+│   └── seed_data.py           # Seed/reference data generation
+└── render.yaml                # Render blueprint (service + database)
 ```
 
 ---
@@ -297,7 +296,7 @@ mindEase-ai/
 
 **Privacy.** Data minimization by design, per-user privacy settings (share/analytics/retention), data export and delete, configurable anonymous mode, bcrypt password hashing, JWT-gated access, and TLS in transit. Sensitive at-rest values use an encryption key injected via environment.
 
-**Security posture of this repository.** The audit in `docs/security.md` confirms: no secrets, API keys, or private keys in Git history; `.env`, keystore, `storepass.txt`, `*.jks`, `*.pem`, `*.key`, and `secrets/` are git-ignored; production database credentials and signing secrets were **rotated** before release and exist only as environment variables / local OS-only files.
+**Security posture of this repository.** The audit in `backend/docs/security.md` confirms: no secrets, API keys, or private keys in Git history; `.env`, keystore, `storepass.txt`, `*.jks`, `*.pem`, `*.key`, and `secrets/` are git-ignored; production database credentials and signing secrets were **rotated** before release and exist only as environment variables / local OS-only files.
 
 ---
 
