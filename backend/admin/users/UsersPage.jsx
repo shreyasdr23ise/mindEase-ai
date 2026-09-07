@@ -90,6 +90,17 @@ function UserDetail({ userId, go }) {
     }
   }
 
+  const remove = async () => {
+    if (!window.confirm('Permanently delete this user? All their data and logs will be removed. This cannot be undone.')) return
+    try {
+      await api.del(`/api/admin/users/${userId}`)
+      alert('User deleted permanently.')
+      go('/users')
+    } catch (err) {
+      setActionMsg(err.message || 'Failed to delete user.')
+    }
+  }
+
   return (
     <div>
       <button className="btn ghost small" onClick={() => go('/users')}>← Back to users</button>
@@ -132,6 +143,9 @@ function UserDetail({ userId, go }) {
               {data.is_active && (
                 <button className="btn danger" onClick={deactivate}>Deactivate user</button>
               )}
+              <button className="btn danger" onClick={remove} style={{ marginLeft: 8 }}>
+                Delete user
+              </button>
             </Card>
 
             <Card title="Recent activity">

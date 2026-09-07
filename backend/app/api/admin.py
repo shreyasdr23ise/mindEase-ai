@@ -18,6 +18,7 @@ from app.models.wellness import WellnessSession
 from app.models.counselor import Counselor
 from app.models.audit import AuditLog
 from app.models.activity import ActivityLog
+from app.models.emotion import EmotionAnalysis
 from app.schemas.admin import (
     AdminAnalytics, UserListResponse,
     ActivityLogPage, ActivityLogResponse, UserActivitySummary, ActivityStats,
@@ -512,3 +513,46 @@ async def deactivate_user(
                         metadata={"target_user": target_user.email, "action": "deactivate"})
     await db.commit()
     return {"message": f"User {target_user.email} deactivated"}
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_200_OK)
+async def delete_user(
+    user_id,
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hard-delete a user and every row that references it.
+
+    No trace remains: activity_logs/audit_logs/emotion_analyses use
+    ``ON DELETE SET NULL``, so the user row alone cannot be deleted without
+    explicitly purging those tables first.
+    """
+    await _require_admin(current_user)
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if target_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own account")
+
+    email = target_user.email
+
+    # 1. Logs/analyses that would otherwise survive via ON DELETE SET NULL.
+    await db.execute(ActivityLog.__table__.delete().where(ActivityLog.user_id == target_user.id))
+    await db.execute(AuditLog.__table__.delete().where(AuditLog.user_id == target_user.id))
+    await db.execute(EmotionAnalysis.__table__.delete().where(EmotionAnalysis.user_id == target_user.id))
+
+    # 2. Everything else cascades from users.id. Delete the row last.
+    await db.execute(User.__table__.delete().where(User.id == target_user.id))
+    await db.commit()
+
+    # The admin action is logged *after* the target is fully gone. The audit
+    # entry carries no identifying details of the deleted account so no trace
+    # of it remains anywhere in the system.
+    _record_admin_event(db, current_user, EventType.ADMIN_UPDATE_USER, request,
+                        metadata={"action": "delete_user"})
+    await db.commit()
+    return {"message": f"User {email} deleted permanently"}

@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     SYNC_DATABASE_URL: str = "postgresql://postgres:password@localhost:5432/mindease_ai"
     JWT_SECRET: str = "mindease-ai-super-secret-jwt-key-change-in-production-2024"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    # 10 years (5256000 minutes): effectively lifetime access — sessions never
+    # expire in practice, keeping demo/regular users logged in permanently.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5256000
     AI_PROVIDER: str = "mock"
     AI_API_KEY: Optional[str] = None
     REDIS_URL: str = "redis://localhost:6379/0"
