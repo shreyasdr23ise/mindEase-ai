@@ -4,7 +4,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, cast
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -541,9 +542,20 @@ async def delete_user(
     email = target_user.email
 
     # 1. Logs/analyses that would otherwise survive via ON DELETE SET NULL.
+    #    Also purge log rows *owned by other users* (e.g. admin audit rows)
+    #    whose metadata spells out the deleted account's email, so no trace
+    #    of the account remains anywhere.
     await db.execute(ActivityLog.__table__.delete().where(ActivityLog.user_id == target_user.id))
     await db.execute(AuditLog.__table__.delete().where(AuditLog.user_id == target_user.id))
     await db.execute(EmotionAnalysis.__table__.delete().where(EmotionAnalysis.user_id == target_user.id))
+    await db.execute(ActivityLog.__table__.delete().where(
+        ActivityLog.event_data != None,
+        cast(ActivityLog.event_data, sa.String).contains(email),
+    ))
+    await db.execute(AuditLog.__table__.delete().where(
+        AuditLog.details != None,
+        cast(AuditLog.details, sa.String).contains(email),
+    ))
 
     # 2. Everything else cascades from users.id. Delete the row last.
     await db.execute(User.__table__.delete().where(User.id == target_user.id))
