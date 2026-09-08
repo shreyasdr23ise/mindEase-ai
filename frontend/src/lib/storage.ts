@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const TOKEN_KEY = "mindease.token";
 const USER_KEY = "mindease.user";
@@ -15,14 +16,37 @@ export function sanitize(value: string): string {
 }
 
 // ── Auth session (token stored in the secure OS keystore) ────────────────
+// On web, SecureStore is unavailable; fall back to localStorage so the web
+// build of the app can persist login sessions too.
+const isSecureStoreSupported = Platform.OS !== "web" && typeof window === "undefined";
+
 export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  if (isSecureStoreSupported) {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+  } else {
+    try {
+      window.localStorage.setItem(TOKEN_KEY, token);
+    } catch { /* ignore */ }
+  }
 }
 export async function loadToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  if (isSecureStoreSupported) {
+    return SecureStore.getItemAsync(TOKEN_KEY);
+  }
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  if (isSecureStoreSupported) {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } else {
+    try {
+      window.localStorage.removeItem(TOKEN_KEY);
+    } catch { /* ignore */ }
+  }
 }
 export async function saveUser(user: unknown): Promise<void> {
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
